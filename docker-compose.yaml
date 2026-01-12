@@ -23,9 +23,3 @@ services:
     networks:
       - local-otel-collector
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
