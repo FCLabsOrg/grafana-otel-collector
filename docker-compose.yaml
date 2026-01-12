@@ -3,10 +3,83 @@ networks:
     name: local-otel-collector
     driver: bridge
 
+configs:
+  otel-local-collector-config:
+    content: |
+      receivers:
+        otlp:
+          protocols:
+            grpc:
+              endpoint: 0.0.0.0:4317
+            http:
+              endpoint: 0.0.0.0:4318
+
+      processors:
+        batch:
+          timeout: 10s
+          send_batch_size: 1024
+        memory_limiter:
+          check_interval: 1s
+          limit_mib: 512
+
+      exporters:
+        # Prometheus Remote Write for metrics
+        prometheusremotewrite:
+          endpoint: ${GRAFANA_CLOUD_METRICS_ENDPOINT}
+          auth:
+            authenticator: basicauth/grafana_cloud_metrics
+
+        # OTLP HTTP for traces (Tempo)
+        otlphttp/traces:
+          endpoint: ${GRAFANA_CLOUD_TRACES_ENDPOINT}
+          auth:
+            authenticator: basicauth/grafana_cloud_traces
+          tls:
+            insecure: false
+
+      extensions:
+        basicauth/grafana_cloud_metrics:
+          client_auth:
+            username: "${GRAFANA_CLOUD_METRICS_USERNAME}"
+            password: "${GRAFANA_CLOUD_METRICS_API_KEY}"
+
+        basicauth/grafana_cloud_traces:
+          client_auth:
+            username: "${GRAFANA_CLOUD_TRACES_USERNAME}"
+            password: "${GRAFANA_CLOUD_TRACES_API_KEY}"
+
+        health_check:
+          endpoint: 0.0.0.0:13133
+
+        pprof:
+          endpoint: 0.0.0.0:1777
+
+        zpages:
+          endpoint: 0.0.0.0:55679
+
+      service:
+        extensions:
+          - health_check
+          - pprof
+          - zpages
+          - basicauth/grafana_cloud_metrics
+          - basicauth/grafana_cloud_traces
+        pipelines:
+          metrics:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [prometheusremotewrite]
+          traces:
+            receivers: [otlp]
+            processors: [memory_limiter, batch]
+            exporters: [otlphttp/traces]
+
+
+
 services:
-  otel-collector:
+  otel-local-collector:
     image: otel/opentelemetry-collector-contrib:latest
-    container_name: otel-collector
+    container_name: otel-local-collector
     command: ["--config=/etc/otelcol/config.yaml"]
     environment:
       - GRAFANA_CLOUD_METRICS_ENDPOINT=${GRAFANA_CLOUD_METRICS_ENDPOINT:-}
@@ -15,8 +88,9 @@ services:
       - GRAFANA_CLOUD_TRACES_ENDPOINT=${GRAFANA_CLOUD_TRACES_ENDPOINT:-}
       - GRAFANA_CLOUD_TRACES_USERNAME=${GRAFANA_CLOUD_TRACES_USERNAME:-}
       - GRAFANA_CLOUD_TRACES_API_KEY=${GRAFANA_CLOUD_TRACES_API_KEY:-}
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+    configs:
+      - source: otel-local-collector-config
+        target: /etc/otelcol/config.yaml
     ports:
       - "4317:4317"  # OTLP gRPC receiver
       - "4318:4318"  # OTLP HTTP receiver
