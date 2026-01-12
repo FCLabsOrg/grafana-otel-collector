@@ -8,6 +8,15 @@ services:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: otel-collector
     command: ["--config=/etc/otelcol/config.yaml"]
+    environment:
+      - GRAFANA_CLOUD_METRICS_ENDPOINT=${GRAFANA_CLOUD_METRICS_ENDPOINT:-}
+      - GRAFANA_CLOUD_METRICS_USERNAME=${GRAFANA_CLOUD_METRICS_USERNAME:-}
+      - GRAFANA_CLOUD_METRICS_API_KEY=${GRAFANA_CLOUD_METRICS_API_KEY:-}
+      - GRAFANA_CLOUD_TRACES_ENDPOINT=${GRAFANA_CLOUD_TRACES_ENDPOINT:-}
+      - GRAFANA_CLOUD_TRACES_USERNAME=${GRAFANA_CLOUD_TRACES_USERNAME:-}
+      - GRAFANA_CLOUD_TRACES_API_KEY=${GRAFANA_CLOUD_TRACES_API_KEY:-}
+      - GRAFANA_CLOUD_LOGS_ENDPOINT=${GRAFANA_CLOUD_LOGS_ENDPOINT:-}
+      - GRAFANA_CLOUD_LOGS_USERNAME=${GRAFANA_CLOUD_LOGS_USERNAME:-}
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
     ports:
@@ -15,8 +24,6 @@ services:
       - "4318:4318"  # OTLP HTTP receiver
     networks:
       - local-otel-collector
-    env_file:
-      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133"]
