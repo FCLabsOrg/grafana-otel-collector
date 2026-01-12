@@ -29,16 +29,6 @@ exporters:
     tls:
       insecure: false
 
-  # Loki for logs
-  loki:
-    endpoint: ${GRAFANA_CLOUD_LOGS_ENDPOINT}
-    auth:
-      authenticator: basicauth/grafana_cloud_logs
-    labels:
-      resource:
-        service.name: "service_name"
-        service.namespace: "service_namespace"
-
 extensions:
   basicauth/grafana_cloud_metrics:
     client_auth:
@@ -49,11 +39,6 @@ extensions:
     client_auth:
       username: ${GRAFANA_CLOUD_TRACES_USERNAME}
       password: ${GRAFANA_CLOUD_TRACES_API_KEY}
-
-  basicauth/grafana_cloud_logs:
-    client_auth:
-      username: ${GRAFANA_CLOUD_LOGS_USERNAME}
-      password: ${GRAFANA_CLOUD_LOGS_API_KEY}
 
   health_check:
     endpoint: 0.0.0.0:13133
@@ -71,7 +56,6 @@ service:
     - zpages
     - basicauth/grafana_cloud_metrics
     - basicauth/grafana_cloud_traces
-    - basicauth/grafana_cloud_logs
   pipelines:
     metrics:
       receivers: [otlp]
@@ -81,7 +65,3 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [otlphttp/traces]
-    logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [loki]
